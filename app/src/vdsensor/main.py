@@ -14,14 +14,23 @@ import logging
 import uvicorn
 
 from .config import Settings
+from .hardware import Color, build_leds
 from .transport import Controller, FakeSerialLink
 from .web.app import build_app
 
 
 def _make_controller(settings: Settings) -> Controller:
+    gpios = {
+        Color.GREEN: settings.led_green_gpio,
+        Color.ORANGE: settings.led_orange_gpio,
+        Color.RED: settings.led_red_gpio,
+    }
+    # In fake mode, default to NullLeds so we don't try to write /sys on the dev host.
+    backend = "none" if settings.fake else settings.leds_backend
+    leds = build_leds(backend, gpios)
     if settings.fake:
-        return Controller(FakeSerialLink())
-    return Controller.from_serial(settings.serial_port, settings.serial_baud)
+        return Controller(FakeSerialLink(), leds=leds)
+    return Controller.from_serial(settings.serial_port, settings.serial_baud, leds=leds)
 
 
 async def _run() -> None:

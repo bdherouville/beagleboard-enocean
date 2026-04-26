@@ -23,6 +23,7 @@ from ..esp3.framing import Frame, FrameDecoder, encode_frame
 from ..esp3.packets import EventCode, PacketType
 from ..esp3.radio import Erp1, parse_erp1
 from ..esp3.response import Response, parse_response
+from ..hardware import Leds, NullLeds
 from .link import Link
 from .serial_link import SerialLink
 
@@ -41,8 +42,9 @@ class GatewayInfo:
 
 
 class Controller:
-    def __init__(self, link: Link) -> None:
+    def __init__(self, link: Link, *, leds: Leds | None = None) -> None:
         self._link = link
+        self._leds: Leds = leds or NullLeds({})
         self._decoder = FrameDecoder()
         self._reader_task: asyncio.Task[None] | None = None
         self._tx_lock = asyncio.Lock()
@@ -52,12 +54,18 @@ class Controller:
         self._info = GatewayInfo()
 
     @classmethod
-    def from_serial(cls, port: str, baudrate: int = 57600) -> Controller:
-        return cls(SerialLink(port=port, baudrate=baudrate))
+    def from_serial(
+        cls, port: str, baudrate: int = 57600, *, leds: Leds | None = None
+    ) -> Controller:
+        return cls(SerialLink(port=port, baudrate=baudrate), leds=leds)
 
     @property
     def link(self) -> Link:
         return self._link
+
+    @property
+    def leds(self) -> Leds:
+        return self._leds
 
     @property
     def info(self) -> GatewayInfo:
@@ -65,6 +73,7 @@ class Controller:
 
     @asynccontextmanager
     async def run(self) -> AsyncIterator[Controller]:
+        await self._leds.setup()
         async with self._link.run():
             self._reader_task = asyncio.create_task(self._reader_loop(), name="esp3-reader")
             try:
@@ -76,6 +85,7 @@ class Controller:
                         await self._reader_task
                     except (asyncio.CancelledError, Exception):
                         pass
+                await self._leds.cleanup()
 
     # ---- public surface ---------------------------------------------------
 
@@ -87,13 +97,18 @@ class Controller:
             loop = asyncio.get_running_loop()
             self._pending_response = loop.create_future()
             await self._link.write(frame_bytes)
+            await self._leds.blink_tx()
             try:
                 async with asyncio.timeout(deadline):
-                    return await self._pending_response
+                    resp = await self._pending_response
             except TimeoutError as e:
+                await self._leds.blink_error()
                 raise CommandTimeout("no RESPONSE within deadline") from e
             finally:
                 self._pending_response = None
+            if not resp.ok:
+                await self._leds.blink_error()
+            return resp
 
     async def reset(self) -> Response:
         return await self.request(cc.cmd_co_wr_reset())
@@ -194,6 +209,7 @@ class Controller:
             except Exception as e:
                 logger.warning("malformed ERP1: %s", e)
                 return
+            asyncio.create_task(self._leds.blink_rx(), name="led-rx-blink")
             _broadcast(self._erp1_subs, erp1)
             return
 

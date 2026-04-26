@@ -14,6 +14,7 @@ import asyncio
 import logging
 import sys
 
+from .hardware import Color, build_leds
 from .transport import Controller, FakeSerialLink
 
 
@@ -42,9 +43,14 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _make_controller(args: argparse.Namespace) -> Controller:
+    # Default GPIO mapping matches the env-driven Settings; in --fake we skip
+    # sysfs writes but still keep the Color → GPIO map so the dashboard /api/leds
+    # endpoint can show what the hardware will look like.
+    gpios = {Color.GREEN: 67, Color.ORANGE: 68, Color.RED: 66}
+    leds = build_leds("none" if args.fake else "sysfs", gpios)
     if args.fake:
-        return Controller(FakeSerialLink())
-    return Controller.from_serial(port=args.port, baudrate=args.baud)
+        return Controller(FakeSerialLink(), leds=leds)
+    return Controller.from_serial(port=args.port, baudrate=args.baud, leds=leds)
 
 
 async def _sniff(controller: Controller) -> None:

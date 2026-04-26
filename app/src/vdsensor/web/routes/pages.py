@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ...transport import Controller
@@ -29,3 +29,15 @@ async def index(request: Request, controller: ControllerDep, templates: Template
 @router.get("/telegrams", response_class=HTMLResponse)
 async def telegrams(request: Request, templates: TemplatesDep):
     return templates.TemplateResponse(request, "telegrams.html", {})
+
+
+@router.get("/api/leds")
+async def leds_api(controller: ControllerDep) -> JSONResponse:
+    """Current state + GPIO mapping of the daughter-board LEDs."""
+    leds = controller.leds
+    state = leds.state()
+    gpios = leds.gpios
+    return JSONResponse({
+        "state": {color.value: bool(on) for color, on in state.items()},
+        "gpios": {color.value: gpio for color, gpio in gpios.items()},
+    })

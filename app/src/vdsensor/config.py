@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     mqtt_prefix: str = Field(default="vdsensor")
     ha_discovery_prefix: str = Field(default="homeassistant")
 
+    # Status LEDs on the EnOcean daughter-board.
+    leds_backend: str = Field(default="sysfs")     # "sysfs" or "none"
+    led_green_gpio: int = Field(default=67)
+    led_orange_gpio: int = Field(default=68)
+    led_red_gpio: int = Field(default=66)
+
     @property
     def db_url(self) -> str:
         if self.db_path == ":memory:":

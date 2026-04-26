@@ -2,6 +2,16 @@
 {% block title %}vdsensor — dashboard{% endblock %}
 {% block main %}
 <section class="card">
+  <h2>Daughter-board LEDs</h2>
+  <div class="leds" id="leds">
+    <span class="led green"   data-color="green"  title="TX activity">●<small>green</small></span>
+    <span class="led orange"  data-color="orange" title="RX activity">●<small>orange</small></span>
+    <span class="led red"     data-color="red"    title="error">●<small>red</small></span>
+  </div>
+  <p class="muted" id="leds-gpios"></p>
+</section>
+
+<section class="card">
   <h2>Gateway</h2>
   <dl>
     <dt>Port</dt><dd><code>{{ port }}</code></dd>
@@ -21,3 +31,4 @@
   </dl>
 </section>
 {% endblock %}
+{% block scripts %}<script src="/static/leds.js"></script>{% endblock %}
