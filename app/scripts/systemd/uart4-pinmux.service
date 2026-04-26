@@ -1,0 +1,15 @@
+[Unit]
+Description=Mux P9.11 (RX) and P9.13 (TX) to UART4 for vdsensor (EnOcean)
+DefaultDependencies=yes
+After=multi-user.target
+Before=vdsensor.service docker.service
+ConditionPathExists=/usr/bin/config-pin
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/config-pin P9.11 uart
+ExecStart=/usr/bin/config-pin P9.13 uart
+
+[Install]
+WantedBy=multi-user.target

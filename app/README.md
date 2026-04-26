@@ -19,19 +19,37 @@ so the live inspector and the pairing wizard have something to chew on.
 
 ## Quickstart (BeagleBone Black, real hardware)
 
-1. **One-time on the BBB**: enable UART4. See `docs/BBB-pinmux.md`.
-2. **Pull the image** from the registry that CI / your build host pushed to:
+The fastest path is the install script — it sets up everything to start at
+boot, including the UART4 pinmux:
 
-   ```bash
-   echo "$GHCR_READ_PAT" | docker login ghcr.io -u <user> --password-stdin
-   cp .env.example .env && $EDITOR .env
-   docker compose pull
-   docker compose up -d
-   ```
+```bash
+git clone https://github.com/bdherouville/beagleboard-enocean.git ~/vdsensor
+cd ~/vdsensor/app
+sudo bash scripts/install-on-bbb.sh
+```
 
-3. Browse to `http://<bbb>:8080/`. Pair a device, label it, pick its EEP
-   profile. If `VDSENSOR_MQTT_URL` is set, the device shows up in Home
-   Assistant within a few seconds via MQTT discovery.
+The script:
+
+1. Verifies docker + `config-pin` are present.
+2. Creates `/opt/vdsensor/{docker-compose.yml,.env}` (preserves an existing
+   `.env`).
+3. Installs two systemd units:
+   - `uart4-pinmux.service` — runs `config-pin P9.11/P9.13 uart` before
+     docker starts, so `/dev/ttyO4` exists by the time the container needs it.
+   - `vdsensor.service` — runs `docker compose pull && up -d` after docker +
+     pinmux + network are online; tears the stack down cleanly on `stop`.
+3. Pulls the image and starts the stack.
+
+Edit `/opt/vdsensor/.env` (MQTT URL, GHCR_USER, etc.), then
+`sudo systemctl restart vdsensor.service` to apply.
+
+**Logs:**  `sudo journalctl -u vdsensor.service -f`
+**App:**   `http://<bbb-ip>:8080/`
+**Uninstall:** `sudo bash scripts/install-on-bbb.sh --uninstall`
+**Wipe everything:** `sudo bash scripts/install-on-bbb.sh --purge`
+
+If you'd rather wire it up by hand, `docs/BBB-pinmux.md` covers the pinmux
+step and the manual `docker compose pull && up -d` flow.
 
 ### Identifying the daughter-board LEDs
 

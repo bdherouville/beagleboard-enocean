@@ -1,0 +1,20 @@
+[Unit]
+Description=vdsensor — EnOcean → Home Assistant gateway (docker compose stack)
+After=docker.service uart4-pinmux.service network-online.target
+Wants=docker.service uart4-pinmux.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/vdsensor
+EnvironmentFile=-/opt/vdsensor/.env
+# Replaced at install time with whichever compose CLI is available.
+ExecStart=__COMPOSE_CMD__ pull
+ExecStart=__COMPOSE_CMD__ up -d
+ExecStop=__COMPOSE_CMD__ down
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
