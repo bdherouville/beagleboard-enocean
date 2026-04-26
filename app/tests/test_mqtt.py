@@ -84,3 +84,56 @@ def test_discovery_emits_one_entry_per_point() -> None:
         "vdsensor_0180a1b2_temperature",
         "vdsensor_0180a1b2_humidity",
     }
+
+
+# ---- coalescing semantics for the publish buffers --------------------------
+#
+# These exercise the bridge's internal buffering directly, without standing up a
+# real broker. The whole point of the design: on reconnect we publish the
+# *latest* state per topic, not the FIFO backlog.
+
+from vdsensor.mqtt.bridge import MqttBridge, MqttConfig  # noqa: E402
+
+
+@pytest.fixture
+def bridge() -> MqttBridge:
+    return MqttBridge(MqttConfig(host="example.test"), Topics())
+
+
+def test_retained_publishes_collapse_to_latest_per_topic(bridge: MqttBridge) -> None:
+    bridge._enqueue("vdsensor/devices/aa/state", '{"temperature":21.0}', retain=True, qos=1)
+    bridge._enqueue("vdsensor/devices/aa/state", '{"temperature":21.5}', retain=True, qos=1)
+    bridge._enqueue("vdsensor/devices/aa/state", '{"temperature":22.1}', retain=True, qos=1)
+    bridge._enqueue("vdsensor/devices/bb/state", '{"contact":true}', retain=True, qos=1)
+
+    latest, oneshot = bridge._drain()
+    assert oneshot == []
+    by_topic = {m.topic: m.payload for m in latest}
+    assert by_topic == {
+        "vdsensor/devices/aa/state": '{"temperature":22.1}',
+        "vdsensor/devices/bb/state": '{"contact":true}',
+    }
+
+
+def test_oneshot_publishes_keep_order_and_dont_collapse(bridge: MqttBridge) -> None:
+    bridge._enqueue("vdsensor/devices/aa/raw", "deadbeef", retain=False, qos=0)
+    bridge._enqueue("vdsensor/devices/aa/raw", "cafebabe", retain=False, qos=0)
+    latest, oneshot = bridge._drain()
+    assert latest == []
+    assert [m.payload for m in oneshot] == ["deadbeef", "cafebabe"]
+
+
+def test_drain_clears_buffers(bridge: MqttBridge) -> None:
+    bridge._enqueue("a/b", "x", retain=True, qos=1)
+    bridge._drain()
+    latest, oneshot = bridge._drain()
+    assert latest == [] and oneshot == []
+
+
+def test_oneshot_queue_is_bounded(bridge: MqttBridge) -> None:
+    from vdsensor.mqtt.bridge import ONESHOT_QUEUE_LIMIT
+    for i in range(ONESHOT_QUEUE_LIMIT + 5):
+        bridge._enqueue(f"t/{i}", "p", retain=False, qos=0)
+    latest, oneshot = bridge._drain()
+    assert latest == []
+    assert len(oneshot) == ONESHOT_QUEUE_LIMIT          # extras dropped, no exception
