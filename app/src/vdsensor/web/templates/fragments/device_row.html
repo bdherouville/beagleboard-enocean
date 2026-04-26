@@ -1,0 +1,13 @@
+<tr id="dev-{{ "%08x" | format(device.sender_id) }}">
+  <td><code>{{ fmt_sender(device.sender_id) }}</code></td>
+  <td><code>{{ device.eep }}</code></td>
+  <td>{{ device.label }}</td>
+  <td>{{ device.last_seen.strftime("%Y-%m-%d %H:%M:%S") if device.last_seen else "—" }}</td>
+  <td>
+    <a href="/devices/{{ fmt_sender(device.sender_id) }}">view</a>
+    <button hx-delete="/devices/{{ fmt_sender(device.sender_id) }}"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            hx-confirm="Remove {{ device.label }}?">delete</button>
+  </td>
+</tr>

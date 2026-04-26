@@ -1,0 +1,46 @@
+# --- Python build artefacts ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+*.whl
+
+# --- venvs / tooling caches ---
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- runtime / data ---
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+/tmp/
+
+# --- legacy artefacts not worth versioning ---
+# The full VDSensor/ tree carries third-party JARs (the original Java client +
+# its predecessor VDMeeting builds). They live on the BBB and on the dev host
+# as the protocol-RE source of truth, but we don't redistribute them via this
+# public repo. CLAUDE.md still references them by their local paths.
+VDSensor/
+# Stray "echo 0 > value" leftover from the legacy Java LedsHandler in the wrong cwd.
+VDSensor/value
+# Stale 2014 setuptools shims pointing at a long-gone Python install.
+/easy_install
+/easy_install-2.7
+# Broken symlink into /opt/source/beaglebone-universal-io/ on the original BBB.
+/config-pin
+
+# --- copyrighted, distribute separately ---
+# EnOcean Serial Protocol 3 spec — copyright EnOcean GmbH; download from
+# https://www.enocean.com/ rather than redistribute via this repo.
+EnOceanSerialProtocol3-1.pdf
+
+# --- editor / OS noise ---
+.idea/
+.vscode/
+.DS_Store

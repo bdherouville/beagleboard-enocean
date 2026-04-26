@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}vdsensor — {{ device.label }}{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>{{ device.label }} <small><code>{{ fmt_sender(device.sender_id) }}</code></small></h2>
+  <dl>
+    <dt>EEP</dt><dd><code>{{ device.eep }}</code></dd>
+    <dt>Paired</dt><dd>{{ device.paired_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC</dd>
+    <dt>Last seen</dt>
+    <dd>{{ device.last_seen.strftime("%Y-%m-%d %H:%M:%S") if device.last_seen else "—" }} UTC</dd>
+  </dl>
+
+  <h3>Rename</h3>
+  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/rename"
+        hx-swap="none">
+    <input name="label" value="{{ device.label }}">
+    <button type="submit">Save</button>
+  </form>
+
+  <h3>Change EEP</h3>
+  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/eep"
+        hx-swap="none">
+    <select name="eep">
+      {% for p in profiles %}
+      <option value="{{ p.profile_id }}" {% if p.profile_id == device.eep %}selected{% endif %}>
+        {{ p.profile_id }} — {{ p.label }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit">Save</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Recent telegrams</h3>
+  <table>
+    <thead><tr><th>Time (UTC)</th><th>RORG</th><th>Status</th><th>RSSI</th><th>Payload</th></tr></thead>
+    <tbody>
+      {% for t in telegrams %}
+      <tr>
+        <td>{{ t.ts.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+        <td><code>0x{{ "%02x" | format(t.rorg) }}</code></td>
+        <td><code>0x{{ "%02x" | format(t.status) }}</code></td>
+        <td>{{ t.rssi_dbm if t.rssi_dbm is not none else "" }}</td>
+        <td><code>{{ t.payload_hex }}</code></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No telegrams recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

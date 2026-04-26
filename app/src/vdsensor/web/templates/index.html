@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}vdsensor — dashboard{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>Gateway</h2>
+  <dl>
+    <dt>Port</dt><dd><code>{{ port }}</code></dd>
+    {% if info.version %}
+    <dt>Description</dt><dd>{{ info.version.description or "—" }}</dd>
+    <dt>App version</dt><dd>{{ info.version.app_version | join(".") }}</dd>
+    <dt>API version</dt><dd>{{ info.version.api_version | join(".") }}</dd>
+    <dt>Chip ID</dt><dd><code>0x{{ "%08x" | format(info.version.chip_id) }}</code></dd>
+    {% else %}
+    <dt>Status</dt><dd class="warn">Gateway not probed yet (no response)</dd>
+    {% endif %}
+    {% if info.idbase %}
+    <dt>IDBASE</dt><dd><code>0x{{ "%08x" | format(info.idbase.base_id) }}</code>
+        ({{ info.idbase.remaining_writes }} writes left)</dd>
+    {% endif %}
+    <dt>Learn mode</dt><dd>{{ "ON" if info.learn_mode else "off" }}</dd>
+  </dl>
+</section>
+{% endblock %}

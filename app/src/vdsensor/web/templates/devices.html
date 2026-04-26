@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}vdsensor — devices{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>Paired devices</h2>
+  {% if devices %}
+  <table id="devices">
+    <thead>
+      <tr><th>Sender ID</th><th>EEP</th><th>Label</th><th>Last seen</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for device in devices %}
+        {% include "fragments/device_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No devices paired yet. <a href="/pair">Start pairing</a> to add one.</p>
+  {% endif %}
+</section>
+{% endblock %}

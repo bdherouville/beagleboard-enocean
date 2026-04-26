@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}vdsensor — live telegrams{% endblock %}
+{% block main %}
+<section class="card">
+  <h2>Live telegrams</h2>
+  <p id="ws-status" class="warn">connecting…</p>
+  <table id="telegrams">
+    <thead>
+      <tr><th>Time</th><th>RORG</th><th>Sender</th><th>Status</th><th>dBm</th><th>Payload</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/app.js"></script>
+{% endblock %}
