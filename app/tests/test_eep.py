@@ -56,10 +56,43 @@ def test_d5_00_01_contact_open_closed() -> None:
     assert closed_pts[0].value is True
 
 
-def test_f6_02_01_action_decoded() -> None:
-    pressed = Erp1(rorg=0xF6, payload=b"\x30", sender_id=1, status=0x30)  # NU=1
-    released = Erp1(rorg=0xF6, payload=b"\x00", sender_id=1, status=0x20) # NU=0
-    pts = {p.key: p.value for p in decode("F6-02-01", pressed)}
-    rel = {p.key: p.value for p in decode("F6-02-01", released)}
-    assert pts["action"] == "A0"
+def _f6(db0: int, status: int) -> Erp1:
+    return Erp1(rorg=0xF6, payload=bytes((db0,)), sender_id=1, status=status)
+
+
+def test_f6_02_01_release_when_nu_zero() -> None:
+    rel = {p.key: p.value for p in decode("F6-02-01", _f6(0x00, 0x20))}
     assert rel["action"] == "released"
+    assert rel["button"] == ""
+    assert rel["rocker"] == ""
+
+
+def test_f6_02_01_press_AI() -> None:
+    # status NU=1 (0x30 = T21+NU), DB0: R1=0 (AI), energy bow = 1
+    pts = {p.key: p.value for p in decode("F6-02-01", _f6(0x10, 0x30))}
+    assert pts["action"] == "pressed"
+    assert pts["button"] == "AI"
+    assert pts["rocker"] == "A"
+    assert pts["second_button"] == ""
+
+
+def test_f6_02_01_press_AO_BI_BO_buttons() -> None:
+    # AO: R1=1, EB=1 → DB0 = 0b001_1_0000 = 0x30
+    # BI: R1=2, EB=1 → DB0 = 0b010_1_0000 = 0x50
+    # BO: R1=3, EB=1 → DB0 = 0b011_1_0000 = 0x70
+    cases = {0x30: ("AO", "A"), 0x50: ("BI", "B"), 0x70: ("BO", "B")}
+    for db0, (button, rocker) in cases.items():
+        pts = {p.key: p.value for p in decode(
+            "F6-02-01", Erp1(rorg=0xF6, payload=bytes((db0,)), sender_id=1, status=0x30))}
+        assert pts["button"] == button
+        assert pts["rocker"] == rocker
+        assert pts["action"] == "pressed"
+
+
+def test_f6_02_01_second_action_when_sa_set() -> None:
+    # First press AI (R1=0) + simultaneous BO (R2=3) with SA=1 and EB=1.
+    # DB0 = R1[7:5]=000 | EB[4]=1 | R2[3:1]=011 | SA[0]=1
+    #     = 0b000_1_011_1 = 0x17
+    pts = {p.key: p.value for p in decode("F6-02-01", _f6(0x17, 0x30))}
+    assert pts["button"] == "AI"
+    assert pts["second_button"] == "BO"

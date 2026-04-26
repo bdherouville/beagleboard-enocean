@@ -33,6 +33,15 @@ so the live inspector and the pairing wizard have something to chew on.
    profile. If `VDSENSOR_MQTT_URL` is set, the device shows up in Home
    Assistant within a few seconds via MQTT discovery.
 
+### Identifying the daughter-board LEDs
+
+If the green / orange / red LEDs on the dashboard don't match the physical
+ones, run `sudo bash app/scripts/leds-identify.sh` on the BBB. It walks
+GPIOs 66/67/68/69 (the four the legacy Java exported) and lights each for
+3 seconds, then prints the canonical BBB header-pin mapping. Whatever
+colour you see when each GPIO is on tells you what to put in
+`VDSENSOR_LED_{GREEN,ORANGE,RED}_GPIO`.
+
 ## Building the ARMv7 image
 
 The dev host is x86_64; the BBB is ARMv7 (Cortex-A8). Two paths, both

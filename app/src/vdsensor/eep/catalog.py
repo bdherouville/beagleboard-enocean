@@ -54,8 +54,10 @@ KNOWN_PROFILES: dict[str, ProfileInfo] = {p.profile_id: p for p in [
     ProfileInfo(
         "F6-02-01", "Rocker switch (2-channel)", 0xF6,
         (
-            DecodedPoint("action", "released", None, None, None),
-            DecodedPoint("raw", "0x00", None, None, None),
+            DecodedPoint("action", "released"),
+            DecodedPoint("button", ""),
+            DecodedPoint("rocker", ""),
+            DecodedPoint("second_button", ""),
         ),
     ),
     ProfileInfo(

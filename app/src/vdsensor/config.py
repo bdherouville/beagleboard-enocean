@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     led_orange_gpio: int = Field(default=68)
     led_red_gpio: int = Field(default=66)
 
+    # Clock-sync gate. The BBB has no RTC; without this, paired_at can be
+    # stamped before NTP catches up.
+    clock_sync_timeout_s: float = Field(default=30.0)
+
     @property
     def db_url(self) -> str:
         if self.db_path == ":memory:":

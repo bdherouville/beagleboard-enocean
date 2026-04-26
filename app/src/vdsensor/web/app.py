@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from ..clock import wait_for_clock_sync
 from ..mqtt import MqttBridge, Topics, parse_mqtt_url
 from ..registry import Database
 from ..registry.pairing import PairingService
@@ -51,6 +52,7 @@ def build_app(
     mqtt_url: str | None = None,
     mqtt_prefix: str = "vdsensor",
     ha_discovery_prefix: str = "homeassistant",
+    clock_sync_timeout_s: float = 30.0,
 ) -> FastAPI:
     db = Database(db_url, telegram_ring_size=telegram_ring_size)
     pairing = PairingService(controller, db)
@@ -62,6 +64,11 @@ def build_app(
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # Block until NTP plausibly catches up — the BBB has no RTC, so
+        # pre-sync `paired_at` timestamps are wrong by years. We don't fail
+        # hard if NTP is broken; we just proceed with a warning.
+        await wait_for_clock_sync(timeout_s=clock_sync_timeout_s)
+
         async with AsyncExitStack() as stack:
             await stack.enter_async_context(controller.run())
             await stack.enter_async_context(db.run())

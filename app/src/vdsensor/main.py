@@ -47,6 +47,7 @@ async def _run() -> None:
         mqtt_url=settings.mqtt_url,
         mqtt_prefix=settings.mqtt_prefix,
         ha_discovery_prefix=settings.ha_discovery_prefix,
+        clock_sync_timeout_s=settings.clock_sync_timeout_s,
     )
     config = uvicorn.Config(
         app,
