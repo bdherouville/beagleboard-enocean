@@ -1,7 +1,7 @@
 //! RESPONSE (packet type 0x02) parser (§2.2).
 
 use super::framing::Frame;
-use super::{ParseError, ReturnCode};
+use super::{ParseError, PacketType, ReturnCode};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Response {
@@ -19,7 +19,19 @@ impl Response {
 
 /// Parse a RESPONSE frame.
 ///
-/// Stub for R1.red.
-pub fn parse_response(_frame: &Frame) -> Result<Response, ParseError> {
-    unimplemented!("parse_response — implemented by R1.green")
+pub fn parse_response(frame: &Frame) -> Result<Response, ParseError> {
+    if frame.packet_type != PacketType::Response as u8 {
+        return Err(ParseError::WrongPacketType {
+            expected: PacketType::Response as u8,
+            actual: frame.packet_type,
+        });
+    }
+    if frame.data.is_empty() {
+        return Err(ParseError::EmptyData);
+    }
+    Ok(Response {
+        return_code: frame.data[0],
+        payload: frame.data[1..].to_vec(),
+        opt: frame.opt.clone(),
+    })
 }

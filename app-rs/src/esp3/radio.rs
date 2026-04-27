@@ -8,8 +8,8 @@
 //!
 //! and OptData (when present): `| SubTelNum | DestID[4 BE] | dBm | SecLvl |`.
 
-use super::framing::Frame;
-use super::{EncodeError, ParseError};
+use super::framing::{encode_frame, Frame};
+use super::{EncodeError, PacketType, ParseError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Erp1 {
@@ -27,9 +27,51 @@ pub struct Erp1 {
 
 /// Parse an ERP1 frame.
 ///
-/// Stub for R1.red.
-pub fn parse_erp1(_frame: &Frame) -> Result<Erp1, ParseError> {
-    unimplemented!("parse_erp1 — implemented by R1.green")
+pub fn parse_erp1(frame: &Frame) -> Result<Erp1, ParseError> {
+    if frame.packet_type != PacketType::RadioErp1 as u8 {
+        return Err(ParseError::WrongPacketType {
+            expected: PacketType::RadioErp1 as u8,
+            actual: frame.packet_type,
+        });
+    }
+    if frame.data.len() < 1 + 4 + 1 {
+        return Err(ParseError::DataTooShort {
+            got: frame.data.len(),
+            min: 6,
+        });
+    }
+
+    let rorg = frame.data[0];
+    let payload = frame.data[1..frame.data.len() - 5].to_vec();
+    let sender_id = u32::from_be_bytes([
+        frame.data[frame.data.len() - 5],
+        frame.data[frame.data.len() - 4],
+        frame.data[frame.data.len() - 3],
+        frame.data[frame.data.len() - 2],
+    ]);
+    let status = frame.data[frame.data.len() - 1];
+
+    let (sub_tel, destination_id, dbm, security_level) = if frame.opt.len() >= 7 {
+        let sub_tel = frame.opt[0];
+        let destination_id =
+            u32::from_be_bytes([frame.opt[1], frame.opt[2], frame.opt[3], frame.opt[4]]);
+        let dbm = -(frame.opt[5] as i16);
+        let security_level = frame.opt[6];
+        (Some(sub_tel), Some(destination_id), Some(dbm), Some(security_level))
+    } else {
+        (None, None, None, None)
+    };
+
+    Ok(Erp1 {
+        rorg,
+        payload,
+        sender_id,
+        status,
+        sub_tel,
+        destination_id,
+        dbm,
+        security_level,
+    })
 }
 
 /// Build a TX-ready ERP1 frame as raw bytes (sync + header + … + CRCs).
@@ -38,22 +80,47 @@ pub fn parse_erp1(_frame: &Frame) -> Result<Erp1, ParseError> {
 /// `sub_tel = 3`, `destination_id = 0xFFFF_FFFF`, `dbm = 0xFF` (the "send case"
 /// sentinel per §2.1.1), `security_level = 0`.
 ///
-/// Stub for R1.red.
 pub fn build_erp1(
-    _rorg: u8,
-    _payload: &[u8],
-    _sender_id: u32,
-    _status: u8,
+    rorg: u8,
+    payload: &[u8],
+    sender_id: u32,
+    status: u8,
 ) -> Result<Vec<u8>, EncodeError> {
-    unimplemented!("build_erp1 — implemented by R1.green")
+    let data = [
+        &[rorg][..],
+        payload,
+        &sender_id.to_be_bytes()[..],
+        &[status][..],
+    ]
+    .concat();
+
+    let sub_tel = 3u8;
+    let destination_id = 0xFFFFFFFFu32;
+    let dbm = 0xFFu8;
+    let security_level = 0u8;
+
+    let opt = [
+        &[sub_tel][..],
+        &destination_id.to_be_bytes()[..],
+        &[dbm, security_level][..],
+    ]
+    .concat();
+
+    encode_frame(PacketType::RadioErp1 as u8, &data, &opt)
 }
 
 /// 4BS teach-in: DB0 bit 3 cleared (§EEP A5 convention).
-pub fn is_4bs_teach_in(_erp1: &Erp1) -> bool {
-    unimplemented!("is_4bs_teach_in — implemented by R1.green")
+pub fn is_4bs_teach_in(erp1: &Erp1) -> bool {
+    if erp1.rorg != 0xA5 || erp1.payload.len() < 4 {
+        return false;
+    }
+    (erp1.payload[3] & 0x08) == 0
 }
 
 /// 1BS teach-in: DB0 bit 3 cleared (§EEP D5).
-pub fn is_1bs_teach_in(_erp1: &Erp1) -> bool {
-    unimplemented!("is_1bs_teach_in — implemented by R1.green")
+pub fn is_1bs_teach_in(erp1: &Erp1) -> bool {
+    if erp1.rorg != 0xD5 || erp1.payload.is_empty() {
+        return false;
+    }
+    (erp1.payload[0] & 0x08) == 0
 }
