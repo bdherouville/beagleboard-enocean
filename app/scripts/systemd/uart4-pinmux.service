@@ -8,8 +8,15 @@ ConditionPathExists=/usr/bin/config-pin
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/config-pin P9.11 uart
-ExecStart=/usr/bin/config-pin P9.13 uart
+# A leading dash makes systemd treat a non-zero exit as success. config-pin
+# fails ("pinmux file not found") on images that don't have cape-universal
+# loaded — but those images also tend to set the mux statically via a
+# dedicated U-Boot overlay (BB-UART4-00A0.dtbo), so failing here would be a
+# false alarm. If you need to know whether config-pin actually worked, run
+#     sudo config-pin -q P9.11 P9.13
+# manually after boot.
+ExecStart=-/usr/bin/config-pin P9.11 uart
+ExecStart=-/usr/bin/config-pin P9.13 uart
 
 [Install]
 WantedBy=multi-user.target
