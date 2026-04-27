@@ -7,34 +7,49 @@
     <dt>EEP</dt><dd><code>{{ device.eep }}</code></dd>
     <dt>Paired</dt><dd>{{ device.paired_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC</dd>
     <dt>Last seen</dt>
-    <dd>{{ device.last_seen.strftime("%Y-%m-%d %H:%M:%S") if device.last_seen else "—" }} UTC</dd>
+    <dd id="dev-last-seen">
+      {{ device.last_seen.strftime("%Y-%m-%d %H:%M:%S") if device.last_seen else "—" }} UTC
+    </dd>
+    <dt>Last RSSI</dt><dd id="dev-rssi">—</dd>
   </dl>
+</section>
 
-  <h3>Rename</h3>
-  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/rename"
-        hx-swap="none">
-    <input name="label" value="{{ device.label }}">
-    <button type="submit">Save</button>
+<section class="card">
+  <h3>Latest decoded values</h3>
+  <dl id="dev-decoded" class="decoded">
+    <dt class="muted">Waiting for the next telegram…</dt>
+  </dl>
+</section>
+
+<section class="card">
+  <h3>Manage</h3>
+  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/rename" hx-swap="none">
+    <label>Label
+      <input name="label" value="{{ device.label }}">
+    </label>
+    <button type="submit">Rename</button>
   </form>
-
-  <h3>Change EEP</h3>
-  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/eep"
-        hx-swap="none">
-    <select name="eep">
-      {% for p in profiles %}
-      <option value="{{ p.profile_id }}" {% if p.profile_id == device.eep %}selected{% endif %}>
-        {{ p.profile_id }} — {{ p.label }}
-      </option>
-      {% endfor %}
-    </select>
-    <button type="submit">Save</button>
+  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/eep" hx-swap="none">
+    <label>EEP
+      <select name="eep">
+        {% for p in profiles %}
+        <option value="{{ p.profile_id }}" {% if p.profile_id == device.eep %}selected{% endif %}>
+          {{ p.profile_id }} — {{ p.label }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Change EEP</button>
   </form>
 </section>
 
 <section class="card">
   <h3>Recent telegrams</h3>
   <table>
-    <thead><tr><th>Time (UTC)</th><th>RORG</th><th>Status</th><th>RSSI</th><th>Payload</th></tr></thead>
+    <thead><tr>
+      <th>Time (UTC)</th><th>RORG</th><th>Status</th><th>RSSI</th>
+      <th>Payload</th><th>Decoded</th>
+    </tr></thead>
     <tbody>
       {% for t in telegrams %}
       <tr>
@@ -43,11 +58,18 @@
         <td><code>0x{{ "%02x" | format(t.status) }}</code></td>
         <td>{{ t.rssi_dbm if t.rssi_dbm is not none else "" }}</td>
         <td><code>{{ t.payload_hex }}</code></td>
+        <td><code>{{ t.decoded_json or "" }}</code></td>
       </tr>
       {% else %}
-      <tr><td colspan="5">No telegrams recorded yet.</td></tr>
+      <tr><td colspan="6">No telegrams recorded yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.VDSENSOR_DEVICE_ID = "{{ fmt_sender(device.sender_id) }}";
+</script>
+<script src="/static/device.js"></script>
 {% endblock %}

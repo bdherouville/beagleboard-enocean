@@ -89,3 +89,6 @@ tbody tr:first-child { background: rgba(88, 166, 255, 0.06); }
 .led.green.on   { color: #3fb950; text-shadow: 0 0 8px rgba(63, 185, 80, 0.8); }
 .led.orange.on  { color: #f0883e; text-shadow: 0 0 8px rgba(240, 136, 62, 0.8); }
 .led.red.on     { color: #f85149; text-shadow: 0 0 8px rgba(248, 81, 73, 0.8); }
+
+.decoded dt { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.decoded dd { font-size: 1.15rem; font-family: var(--mono); color: var(--accent); }

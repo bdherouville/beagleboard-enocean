@@ -6,10 +6,11 @@ HTMX-friendly mutation endpoints return small fragments (or 204 on delete).
 
 from __future__ import annotations
 
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ...eep import KNOWN_PROFILES, get_profile
@@ -47,6 +48,29 @@ async def devices_index(
         "devices.html",
         {"devices": rows, "fmt_sender": _fmt_sender},
     )
+
+
+@router.get("/api/devices/{sender_id}/state")
+async def device_state_api(sender_id: str, db: DatabaseDep) -> JSONResponse:
+    """Latest decoded state for a paired device — used for live page updates."""
+    sid = _parse_sender(sender_id)
+    async with db.session() as s:
+        dev = await get_device(s, sid)
+        if dev is None:
+            raise HTTPException(status_code=404, detail="device not found")
+        rows = await recent_for_device(s, sid, limit=1)
+
+    last = rows[0] if rows else None
+    return JSONResponse({
+        "sender_id": _fmt_sender(sid),
+        "label": dev.label,
+        "eep": dev.eep,
+        "last_seen": dev.last_seen.isoformat() + "Z" if dev.last_seen else None,
+        "last_ts": last.ts.isoformat() + "Z" if last else None,
+        "last_rssi": last.rssi_dbm if last else None,
+        "last_payload": last.payload_hex if last else None,
+        "decoded": json.loads(last.decoded_json) if last and last.decoded_json else None,
+    })
 
 
 @router.get("/devices/{sender_id}", response_class=HTMLResponse)
