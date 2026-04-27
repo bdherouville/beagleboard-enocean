@@ -15,7 +15,11 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pyserial-asyncio>=0.6",
     "aiomqtt>=2.3",
-    "sqlalchemy>=2.0",
+    # [asyncio] pulls greenlet, which SQLAlchemy declares as conditional and
+    # whose marker excludes armv7l — without this extra, the cross-built
+    # ARMv7 image starts up and crashes at the first DB connect with
+    # "the greenlet library is required to use this function".
+    "sqlalchemy[asyncio]>=2.0",
     "aiosqlite>=0.20",
     "pydantic>=2.7",
     "pydantic-settings>=2.4",
