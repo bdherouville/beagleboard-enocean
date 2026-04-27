@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use vdsensor::transport::{Controller, FakeLink, LinkKind, SerialLink};
+use vdsensor::web::{AppState, build_app, templates::Templates};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -34,12 +35,13 @@ async fn main() -> anyhow::Result<()> {
         "sniff" => sniff(&controller).await?,
         "probe" => probe(&controller).await?,
         "reset" => reset(&controller).await?,
+        "serve" => serve(&controller, &args).await?,
         "" | "--help" | "-h" => {
             println!(
-                "vdsensor (rust) — milestones R1+R2 of the migration\n\
+                "vdsensor (rust) — milestones R1..R3 of the migration\n\
                  \n\
                  USAGE:\n  \
-                 vdsensor <sniff|probe|reset> [--fake | --port /dev/ttyS4]\n"
+                 vdsensor <sniff|probe|reset|serve> [--fake | --port /dev/ttyS4] [--http-port 8080]\n"
             );
         }
         cmd => {
@@ -98,6 +100,28 @@ async fn probe(c: &Arc<Controller>) -> anyhow::Result<()> {
 async fn reset(c: &Arc<Controller>) -> anyhow::Result<()> {
     let r = c.reset().await?;
     println!("CO_WR_RESET return code = 0x{:02x}", r.return_code);
+    Ok(())
+}
+
+async fn serve(c: &Arc<Controller>, args: &[String]) -> anyhow::Result<()> {
+    let http_port: u16 = args
+        .windows(2)
+        .find(|w| w[0] == "--http-port")
+        .and_then(|w| w[1].parse().ok())
+        .unwrap_or(8080);
+    let host = "0.0.0.0";
+
+    // Best-effort gateway probe so the dashboard has data on first paint.
+    let _ = c.read_version().await;
+    let _ = c.read_idbase().await;
+
+    let state = AppState::new(Arc::clone(c), Templates::new());
+    let app = build_app(state);
+
+    let addr = format!("{host}:{http_port}");
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    println!("vdsensor serving at http://{addr}/");
+    axum::serve(listener, app).await?;
     Ok(())
 }
 
