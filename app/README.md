@@ -48,6 +48,32 @@ Edit `/opt/vdsensor/.env` (MQTT URL, GHCR_USER, etc.), then
 **Uninstall:** `sudo bash scripts/install-on-bbb.sh --uninstall`
 **Wipe everything:** `sudo bash scripts/install-on-bbb.sh --purge`
 
+### OTA updates
+
+The installer also enables a `vdsensor-update.timer` that runs every 15 minutes
+(with up to 60 s of jitter) and does:
+
+```
+docker compose pull
+docker compose up -d
+```
+
+`compose pull` fetches from `ghcr.io/<owner>/vdsensor:latest`; `up -d` is a
+no-op if the running container's image hash didn't change. Push to `main` →
+GHCR rebuilds → the BBB picks up the new image within ~15 minutes with a few
+seconds of container downtime, no manual action needed.
+
+Inspect / control:
+
+```bash
+systemctl list-timers vdsensor-update.timer    # next scheduled run
+sudo systemctl start  vdsensor-update.service  # update now
+sudo systemctl stop   vdsensor-update.timer    # pause OTA
+sudo systemctl disable --now vdsensor-update.timer  # disable permanently
+```
+
+To skip OTA at install time: `sudo bash scripts/install-on-bbb.sh --no-ota`.
+
 If you'd rather wire it up by hand, `docs/BBB-pinmux.md` covers the pinmux
 step and the manual `docker compose pull && up -d` flow.
 

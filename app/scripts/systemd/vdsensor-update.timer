@@ -1,0 +1,16 @@
+[Unit]
+Description=Periodic check for a new vdsensor image (OTA)
+Requires=vdsensor-update.service
+
+[Timer]
+# First run a few minutes after boot (not immediately, to let other services
+# settle); subsequent runs every 15 minutes with up to 60 s of jitter to
+# avoid hammering ghcr.io if many BBBs share a release schedule.
+OnBootSec=3min
+OnUnitActiveSec=15min
+RandomizedDelaySec=60s
+Persistent=true
+Unit=vdsensor-update.service
+
+[Install]
+WantedBy=timers.target

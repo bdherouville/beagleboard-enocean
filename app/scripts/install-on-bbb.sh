@@ -19,6 +19,7 @@
 #   sudo bash install-on-bbb.sh --uninstall     # stop + remove units (keeps /opt/vdsensor)
 #   sudo bash install-on-bbb.sh --purge         # uninstall + nuke /opt/vdsensor
 #   sudo bash install-on-bbb.sh --no-pull       # skip the initial docker pull (offline)
+#   sudo bash install-on-bbb.sh --no-ota        # don't install vdsensor-update.timer (OTA)
 #
 # Run from a checkout of the repo: the script expects to find
 # `../docker-compose.yml`, `../.env.example`, and `./systemd/*.service`
@@ -30,18 +31,22 @@ INSTALL_DIR="/opt/vdsensor"
 SYSTEMD_DIR="/etc/systemd/system"
 PINMUX_UNIT="uart4-pinmux.service"
 APP_UNIT="vdsensor.service"
+UPDATE_UNIT="vdsensor-update.service"
+UPDATE_TIMER="vdsensor-update.timer"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 ACTION="install"
 DO_PULL=1
+INSTALL_OTA=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --uninstall) ACTION="uninstall" ;;
     --purge)     ACTION="purge" ;;
     --no-pull)   DO_PULL=0 ;;
+    --no-ota)    INSTALL_OTA=0 ;;
     -h|--help)
       sed -n '2,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0 ;;
@@ -114,17 +119,30 @@ do_install() {
 
   log "installing systemd units"
   install_unit "$PINMUX_UNIT" "${SCRIPT_DIR}/systemd/${PINMUX_UNIT}"
-  # Patch the placeholder with the resolved compose command.
-  local tmp_app
-  tmp_app="$(mktemp)"
-  sed "s|__COMPOSE_CMD__|${compose_cmd}|g" \
-    "${SCRIPT_DIR}/systemd/${APP_UNIT}" > "$tmp_app"
-  install_unit "$APP_UNIT" "$tmp_app"
-  rm -f "$tmp_app"
+
+  # Patch the compose-command placeholder into the unit files that need it.
+  patch_unit() {
+    local name="$1" tmp
+    tmp="$(mktemp)"
+    sed "s|__COMPOSE_CMD__|${compose_cmd}|g" \
+      "${SCRIPT_DIR}/systemd/${name}" > "$tmp"
+    install_unit "$name" "$tmp"
+    rm -f "$tmp"
+  }
+  patch_unit "$APP_UNIT"
+
+  if [[ "$INSTALL_OTA" -eq 1 ]]; then
+    patch_unit "$UPDATE_UNIT"
+    install_unit "$UPDATE_TIMER" "${SCRIPT_DIR}/systemd/${UPDATE_TIMER}"
+  fi
 
   systemctl daemon-reload
   systemctl enable "$PINMUX_UNIT" "$APP_UNIT" >/dev/null
   log "enabled $PINMUX_UNIT and $APP_UNIT"
+  if [[ "$INSTALL_OTA" -eq 1 ]]; then
+    systemctl enable "$UPDATE_TIMER" >/dev/null
+    log "enabled $UPDATE_TIMER (OTA: pulls every 15 min, restarts only when image changed)"
+  fi
 
   if [[ "$DO_PULL" -eq 1 ]]; then
     log "pulling the container image"
@@ -136,6 +154,7 @@ do_install() {
   log "starting / restarting the stack"
   systemctl restart "$PINMUX_UNIT"
   systemctl restart "$APP_UNIT"
+  [[ "$INSTALL_OTA" -eq 1 ]] && systemctl restart "$UPDATE_TIMER"
 
   log "done. Status:"
   systemctl --no-pager --full status "$APP_UNIT" || true
@@ -146,9 +165,15 @@ do_install() {
 do_uninstall() {
   require_root
   log "stopping and disabling units (idempotent)"
+  systemctl disable --now "$UPDATE_TIMER" 2>/dev/null || true
+  systemctl disable --now "$UPDATE_UNIT" 2>/dev/null || true
   systemctl disable --now "$APP_UNIT" 2>/dev/null || true
   systemctl disable --now "$PINMUX_UNIT" 2>/dev/null || true
-  rm -f "${SYSTEMD_DIR}/${APP_UNIT}" "${SYSTEMD_DIR}/${PINMUX_UNIT}"
+  rm -f \
+    "${SYSTEMD_DIR}/${UPDATE_TIMER}" \
+    "${SYSTEMD_DIR}/${UPDATE_UNIT}" \
+    "${SYSTEMD_DIR}/${APP_UNIT}" \
+    "${SYSTEMD_DIR}/${PINMUX_UNIT}"
   systemctl daemon-reload
   log "removed systemd units. ${INSTALL_DIR} kept (use --purge to delete it)."
 }

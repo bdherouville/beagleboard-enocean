@@ -1,0 +1,14 @@
+[Unit]
+Description=Pull a fresh vdsensor image and recreate the container if it changed
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/vdsensor
+EnvironmentFile=-/opt/vdsensor/.env
+# `compose pull` fetches from the registry; `compose up -d` is a no-op if the
+# running container's image hash didn't change, so this is safe to run often.
+ExecStart=__COMPOSE_CMD__ pull
+ExecStart=__COMPOSE_CMD__ up -d
+TimeoutStartSec=300
