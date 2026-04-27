@@ -33,7 +33,7 @@ async fn handle_socket(mut ws: WebSocket, state: AppState) {
                 "payload": erp1.payload.iter().map(|b| format!("{:02x}", b)).collect::<String>(),
             },
         });
-        if ws.send(Message::Text(msg.to_string().into())).await.is_err() {
+        if ws.send(Message::Text(msg.to_string())).await.is_err() {
             return;
         }
     }
