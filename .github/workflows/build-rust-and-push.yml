@@ -1,0 +1,87 @@
+# Cross-build the Rust port for ARMv7 (BeagleBone Black target) and push to
+# ghcr.io/<owner>/vdsensor-rs. Runs on pushes to main / rust/main and on
+# v* tags. Image is FROM-scratch + a static musl binary, target ≤30 MB.
+#
+# Auth uses the runner's GITHUB_TOKEN — no PAT plumbing.
+
+name: build-rust-and-push
+
+on:
+  push:
+    branches: [main, rust/main]
+    paths:
+      - "app-rs/**"
+      - ".github/workflows/build-rust-and-push.yml"
+    tags: ["v*"]
+  pull_request:
+    branches: [main, rust/main]
+    paths: ["app-rs/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/vdsensor-rs
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app-rs -> target
+      - name: Build + test
+        run: |
+          cargo build --release
+          cargo test --release
+      - name: Clippy (-D warnings)
+        run: cargo clippy --all-targets -- -D warnings
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=rust-latest,enable=${{ github.ref == 'refs/heads/rust/main' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./app-rs
+          file: ./app-rs/Dockerfile
+          platforms: linux/arm/v7
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=vdsensor-rs
+          cache-to: type=gha,scope=vdsensor-rs,mode=max

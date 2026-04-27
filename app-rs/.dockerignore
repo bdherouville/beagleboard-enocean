@@ -1,0 +1,6 @@
+target/
+.venv/
+.git/
+.github/
+*.swp
+.DS_Store

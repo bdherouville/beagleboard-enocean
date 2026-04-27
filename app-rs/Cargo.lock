@@ -2544,6 +2544,7 @@ dependencies = [
  "axum",
  "chrono",
  "figment",
+ "libsqlite3-sys",
  "minijinja",
  "rstest",
  "rumqttc",
