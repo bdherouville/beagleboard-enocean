@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}vdsensor &middot; live telegrams{% endblock %}
+
+{% block main %}
+<section class="panel" id="telegrams-panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>live telegram stream</h2>
+    <span class="panel__id">// /ws/live</span>
+    <span class="spacer"></span>
+    <span class="pill" id="ws-status">disconnected</span>
+  </header>
+
+  <div class="tele-shell">
+    <aside class="tele-meta">
+      <div class="tele-meta__small">received</div>
+      <div class="tele-meta__count tele-meta__count--ok" id="tele-count">0</div>
+
+      <hr class="dashed">
+
+      <div class="tele-meta__small">unique senders</div>
+      <div class="tele-meta__count" id="tele-senders">0</div>
+
+      <hr class="dashed">
+
+      <div class="tele-meta__small">last frame</div>
+      <div id="tele-last" class="muted">—</div>
+
+      <hr class="dashed">
+
+      <div class="tele-meta__small">protocol</div>
+      <div class="muted">esp3 / radio_erp1</div>
+
+      <hr class="dashed">
+      <p class="muted" style="font-size:10px;">
+        Frames stream live from the daughter-board. The newest row is at the
+        top; flash highlight fades over 700 ms. Background polling stays
+        active even when the tab loses focus.
+      </p>
+    </aside>
+
+    <div class="tele-table-wrap">
+      <table class="tbl" id="telegrams">
+        <thead>
+          <tr>
+            <th class="col-time">time</th>
+            <th class="col-rorg">rorg</th>
+            <th class="col-sender">sender</th>
+            <th class="col-status">stat</th>
+            <th class="col-rssi">rssi</th>
+            <th class="col-payload">payload</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="tbl-empty"><td colspan="6">[ waiting for first frame ]</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

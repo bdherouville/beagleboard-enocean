@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}vdsensor &middot; devices{% endblock %}
+
+{% block main %}
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>paired devices</h2>
+    <span class="panel__id">// {{ devices | length }} unit{{ "s" if (devices | length) != 1 else "" }}</span>
+    <span class="spacer"></span>
+    <a class="btn primary" href="/pair">+ pair new</a>
+  </header>
+
+  {% if devices %}
+    <table class="tbl" id="devices">
+      <thead>
+        <tr>
+          <th>sender id</th>
+          <th>eep</th>
+          <th>label</th>
+          <th>last seen</th>
+          <th class="right">action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for device in devices %}
+          {% include "fragments/device_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="status">
+      no devices paired yet —
+      <a href="/pair">start the pairing wizard</a>
+      and trigger a teach-in from your sensor.
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

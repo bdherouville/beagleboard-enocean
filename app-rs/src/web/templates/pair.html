@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}vdsensor &middot; pair{% endblock %}
+
+{% block main %}
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>pairing wizard</h2>
+    <span class="panel__id">// classic LRN-bit teach-in</span>
+    <span class="spacer"></span>
+    <span class="pair-state" id="pair-state" data-state="{{ state }}">
+      <span class="pair-state__dot"></span>
+      <span id="pair-state-text">{{ state }}</span>
+    </span>
+  </header>
+
+  <div class="pair-grid">
+    <div>
+      <h4 class="section-header">step 1 — open learn window</h4>
+      <form id="pair-start-form" class="form-row">
+        <label>timeout (ms)
+          <input name="timeout_ms" type="number" value="60000" min="1000" max="600000" step="1000">
+        </label>
+        <button class="primary" type="submit">start</button>
+        <button id="pair-cancel" type="button" class="danger">cancel</button>
+      </form>
+
+      <hr class="dashed">
+
+      <h4 class="section-header">step 2 — trigger teach-in</h4>
+      <p class="muted" style="font-size:11px;">
+        Press the <code>LRN</code> button on the sensor (4BS / 1BS) or any key
+        on a rocker switch (RPS) while the window is open. Only telegrams
+        carrying a teach-in bit (or RPS frames during the window) appear below.
+      </p>
+
+      <div id="pair-status" style="margin-top: 0.6rem;"></div>
+    </div>
+
+    <div>
+      <h4 class="section-header">candidates</h4>
+      <table class="tbl" id="candidates">
+        <thead>
+          <tr>
+            <th>sender</th>
+            <th>rorg</th>
+            <th>rssi</th>
+            <th>payload</th>
+            <th class="right">assign</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="tbl-empty"><td colspan="5">[ no candidates yet ]</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <template id="assign-template">
+    <form class="assign-form">
+      <input type="hidden" name="sender_id">
+      <input name="label" placeholder="label" required>
+      <select name="eep" required>
+        {% for p in profiles %}
+        <option value="{{ p.profile_id }}">{{ p.profile_id }} — {{ p.label }}</option>
+        {% endfor %}
+      </select>
+      <button class="primary" type="submit">pair</button>
+    </form>
+  </template>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/pair.js" defer></script>
+{% endblock %}

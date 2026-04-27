@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}vdsensor &middot; dashboard{% endblock %}
+
+{% block main %}
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>gateway</h2>
+    <span class="panel__id">// esp3 controller</span>
+    <span class="spacer"></span>
+    {% if info.version %}
+      <span class="pill pill--ok">online</span>
+    {% else %}
+      <span class="pill pill--warn">probing…</span>
+    {% endif %}
+  </header>
+
+  <dl class="kv">
+    <dt>port</dt>
+    <dd><code>{{ port }}</code></dd>
+
+    {% if info.version %}
+      <dt>chip ID</dt>
+      <dd><code>0x{{ "%08x" | format(info.version.chip_id) }}</code></dd>
+
+      <dt>description</dt>
+      <dd>{{ info.version.description or "—" }}</dd>
+
+      <dt>app ver</dt>
+      <dd>{{ info.version.app_version | join(".") }}</dd>
+
+      <dt>api ver</dt>
+      <dd>{{ info.version.api_version | join(".") }}</dd>
+    {% else %}
+      <dt>status</dt>
+      <dd class="muted">no probe response yet — radio retrying</dd>
+    {% endif %}
+
+    {% if info.idbase %}
+      <dt>idbase</dt>
+      <dd>
+        <code>0x{{ "%08x" | format(info.idbase.base_id) }}</code>
+        <span class="muted">&nbsp;· {{ info.idbase.remaining_writes }} writes left</span>
+      </dd>
+    {% endif %}
+
+    <dt>learn mode</dt>
+    <dd>
+      {% if info.learn_mode %}
+        <span class="pill pill--warn">on</span>
+      {% else %}
+        <span class="muted">off</span>
+      {% endif %}
+    </dd>
+  </dl>
+</section>
+
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>daughter-board leds</h2>
+    <span class="panel__id">// activity indicators</span>
+  </header>
+
+  <div class="leds" id="leds">
+    <div class="led led--green" data-color="green" title="TX activity">
+      <span class="led__bulb"></span>
+      <span class="led__label">tx</span>
+      <span class="led__hint" data-gpio="green">gpio --</span>
+    </div>
+    <div class="led led--orange" data-color="orange" title="RX activity">
+      <span class="led__bulb"></span>
+      <span class="led__label">rx</span>
+      <span class="led__hint" data-gpio="orange">gpio --</span>
+    </div>
+    <div class="led led--red" data-color="red" title="error">
+      <span class="led__bulb"></span>
+      <span class="led__label">err</span>
+      <span class="led__hint" data-gpio="red">gpio --</span>
+    </div>
+  </div>
+  <p class="leds-meta" id="leds-gpios">resolving GPIO mapping…</p>
+
+  <details class="identify">
+    <summary>identify physical led → GPIO mapping</summary>
+    <p class="identify__hint">
+      Each button drives one GPIO high for 5 s. Watch the daughter-board
+      and note which physical colour reacts; if your wiring differs,
+      override <code>VDSENSOR_LED_GREEN_GPIO</code> /
+      <code>_ORANGE_GPIO</code> / <code>_RED_GPIO</code> in
+      <code>/opt/vdsensor/.env</code>.
+    </p>
+    <div class="identify__buttons" id="leds-test"></div>
+    <div id="leds-test-status"></div>
+  </details>
+</section>
+
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>quick actions</h2>
+    <span class="panel__id">// jump-to</span>
+  </header>
+  <div class="row">
+    <a class="btn" href="/telegrams">live telegrams →</a>
+    <a class="btn" href="/devices">paired devices →</a>
+    <a class="btn primary" href="/pair">pair new sensor →</a>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/leds.js" defer></script>
+{% endblock %}

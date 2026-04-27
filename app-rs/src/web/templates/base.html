@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>{% block title %}vdsensor{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="chrome">
+    <div class="chrome__brand">
+      <span class="chrome__corner">┌</span>
+      <span class="chrome__title">vdsensor</span>
+      <span class="chrome__rev">REV.0.1</span>
+      <span class="chrome__corner chrome__corner--right">┐</span>
+    </div>
+    <nav class="chrome__nav" aria-label="primary">
+      <span class="chrome__nav-bracket">[</span>
+      <a href="/" class="chrome__nav-link">dashboard</a>
+      <span class="chrome__nav-sep">·</span>
+      <a href="/telegrams" class="chrome__nav-link">telegrams</a>
+      <span class="chrome__nav-sep">·</span>
+      <a href="/devices" class="chrome__nav-link">devices</a>
+      <span class="chrome__nav-sep">·</span>
+      <a href="/pair" class="chrome__nav-link">pair</a>
+      <span class="chrome__nav-bracket">]</span>
+    </nav>
+  </header>
+
+  <main class="screen">
+    {% block main %}{% endblock %}
+  </main>
+
+  <footer class="chrome chrome--bottom">
+    <span class="chrome__corner">└</span>
+    <span class="chrome__meta">enocean &middot; esp3 v1.58 &middot; <span id="local-time">--:--:--</span> UTC</span>
+    <span class="chrome__corner chrome__corner--right">┘</span>
+  </footer>
+
+  <script src="/static/app.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

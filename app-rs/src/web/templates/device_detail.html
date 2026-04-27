@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}vdsensor &middot; {{ device.label }}{% endblock %}
+
+{% block main %}
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>{{ device.label }}</h2>
+    <span class="panel__id">// {{ device.eep }}</span>
+    <span class="spacer"></span>
+    <span class="pill pill--info">paired</span>
+  </header>
+
+  <dl class="kv">
+    <dt>sender</dt>
+    <dd><code>{{ fmt_sender(device.sender_id) }}</code></dd>
+
+    <dt>eep</dt>
+    <dd><code>{{ device.eep }}</code></dd>
+
+    <dt>paired at</dt>
+    <dd>{{ device.paired_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC</dd>
+
+    <dt>last seen</dt>
+    <dd id="dev-last-seen">
+      {% if device.last_seen %}{{ device.last_seen.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+      {% else %}<span class="muted">never</span>{% endif %}
+    </dd>
+
+    <dt>last rssi</dt>
+    <dd id="dev-rssi" class="muted">—</dd>
+  </dl>
+</section>
+
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>latest decoded values</h2>
+    <span class="panel__id">// poll@1Hz</span>
+  </header>
+  <div id="dev-decoded" class="decoded">
+    <div class="decoded__item">
+      <div class="decoded__key">awaiting</div>
+      <div class="decoded__val decoded__val--null">— first frame</div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>manage</h2>
+    <span class="panel__id">// device controls</span>
+  </header>
+
+  <h4 class="section-header">rename</h4>
+  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/rename"
+        hx-swap="none"
+        class="row-form">
+    <input name="label" value="{{ device.label }}" type="text">
+    <button class="primary" type="submit">save</button>
+  </form>
+
+  <hr class="dashed">
+
+  <h4 class="section-header">change EEP profile</h4>
+  <form hx-post="/devices/{{ fmt_sender(device.sender_id) }}/eep"
+        hx-swap="none"
+        class="row-form">
+    <select name="eep">
+      {% for p in profiles %}
+      <option value="{{ p.profile_id }}" {% if p.profile_id == device.eep %}selected{% endif %}>
+        {{ p.profile_id }} — {{ p.label }}
+      </option>
+      {% endfor %}
+    </select>
+    <button class="primary" type="submit">save</button>
+  </form>
+</section>
+
+<section class="panel">
+  <span class="panel__corner-bl"></span><span class="panel__corner-br"></span>
+  <header class="panel__head">
+    <h2>recent telegrams</h2>
+    <span class="panel__id">// stored locally</span>
+  </header>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th class="col-time">time</th>
+        <th class="col-rorg">rorg</th>
+        <th class="col-status">stat</th>
+        <th class="col-rssi">rssi</th>
+        <th class="col-payload">payload</th>
+        <th class="col-payload">decoded</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in telegrams %}
+      <tr>
+        <td class="col-time">{{ t.ts.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+        <td><code>0x{{ "%02x" | format(t.rorg) }}</code></td>
+        <td><code>0x{{ "%02x" | format(t.status) }}</code></td>
+        <td>{{ t.rssi_dbm if t.rssi_dbm is not none else "" }}</td>
+        <td><code>{{ t.payload_hex }}</code></td>
+        <td><code class="muted">{{ t.decoded_json or "" }}</code></td>
+      </tr>
+      {% else %}
+      <tr class="tbl-empty"><td colspan="6">[ no telegrams stored ]</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>window.VDSENSOR_DEVICE_ID = "{{ fmt_sender(device.sender_id) }}";</script>
+<script src="/static/device.js" defer></script>
+{% endblock %}
