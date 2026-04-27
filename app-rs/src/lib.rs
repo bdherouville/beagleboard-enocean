@@ -4,6 +4,7 @@
 //! crate root that re-exports each as it stabilises. Test crates target
 //! these `pub` paths directly.
 
+pub mod eep;
 pub mod esp3;
 pub mod transport;
 pub mod web;
