@@ -1,9 +1,9 @@
 """Entry-point CLI.
 
-    vdsensor sniff --port /dev/ttyO4         # print decoded ERP1 telegrams
-    vdsensor probe --port /dev/ttyO4         # CO_RD_VERSION + CO_RD_IDBASE
-    vdsensor reset --port /dev/ttyO4         # CO_WR_RESET
-    vdsensor serve --port /dev/ttyO4         # FastAPI web UI
+    vdsensor sniff --port /dev/ttyS4         # print decoded ERP1 telegrams
+    vdsensor probe --port /dev/ttyS4         # CO_RD_VERSION + CO_RD_IDBASE
+    vdsensor reset --port /dev/ttyS4         # CO_WR_RESET
+    vdsensor serve --port /dev/ttyS4         # FastAPI web UI
     vdsensor serve --fake                    # synthetic source, no hardware
 """
 
@@ -20,7 +20,7 @@ from .transport import Controller, FakeSerialLink
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="vdsensor")
-    p.add_argument("--port", default="/dev/ttyO4", help="serial device (default /dev/ttyO4)")
+    p.add_argument("--port", default="/dev/ttyS4", help="serial device (default /dev/ttyS4)")
     p.add_argument("--baud", type=int, default=57600, help="baudrate (default 57600)")
     p.add_argument("--fake", action="store_true",
                    help="use a synthetic ESP3 source instead of opening a real port")

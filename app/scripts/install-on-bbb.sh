@@ -5,7 +5,7 @@
 # What this does (in order):
 #   1. Sanity-checks: root, Debian, docker + compose available, config-pin exists.
 #   2. Creates /opt/vdsensor and copies docker-compose.yml + .env (if absent).
-#   3. Installs /etc/systemd/system/uart4-pinmux.service so /dev/ttyO4
+#   3. Installs /etc/systemd/system/uart4-pinmux.service so /dev/ttyS4
 #      exists at boot before docker starts the container.
 #   4. Installs /etc/systemd/system/vdsensor.service that runs
 #      `docker compose up -d` after docker.service + pinmux + network-online.

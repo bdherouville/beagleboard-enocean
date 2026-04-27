@@ -1,8 +1,16 @@
 # Enabling UART4 on the BeagleBone Black
 
-The container needs `/dev/ttyO4` (BBB UART4) to talk to the EnOcean
+The container needs `/dev/ttyS4` (BBB UART4) to talk to the EnOcean
 daughter-board. Pinmux is a host-side concern; the container only does
-`devices: ["/dev/ttyO4:/dev/ttyO4"]` and joins the `dialout` group.
+`devices: ["/dev/ttyS4:/dev/ttyS4"]` and joins the `dialout` group.
+
+> **Naming note.** The legacy Java code (and BBB Debian images shipped before
+> ~2020) called this node `/dev/ttyO4` — the kernel's old "OMAP UART"
+> naming. Modern kernels expose the same hardware as `/dev/ttyS4` and no
+> longer create the `ttyO*` symlinks. If your image still has `/dev/ttyO4`
+> (rare, and `ls /dev/ttyO*` shows it), set
+> `VDSENSOR_SERIAL_PORT=/dev/ttyO4` in `.env` and update the device
+> passthrough in `docker-compose.yml` accordingly.
 
 ## What needs to happen
 
@@ -37,7 +45,7 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl enable --now uart4-pinmux.service
-ls -l /dev/ttyO4               # expect crw-rw---- root:dialout
+ls -l /dev/ttyS4               # expect crw-rw---- root:dialout
 ```
 
 ### Option B — device-tree overlay (durable across kernel updates)
@@ -50,16 +58,16 @@ uboot_overlay_addr0=BB-UART4-00A0.dtbo
 enable_uboot_overlays=1
 ```
 
-Reboot. Verify the same way (`ls -l /dev/ttyO4`).
+Reboot. Verify the same way (`ls -l /dev/ttyS4`).
 
 ## Verifying the chip is actually wired
 
-Once `/dev/ttyO4` exists, prove the EnOcean module is reachable *before*
+Once `/dev/ttyS4` exists, prove the EnOcean module is reachable *before*
 launching the container — much faster to debug at this layer.
 
 ```bash
 # In the project venv, on the BBB itself:
-python -m vdsensor.cli probe --port /dev/ttyO4
+python -m vdsensor.cli probe --port /dev/ttyS4
 # Expected output:
 #   app_version  = 2.x.y.z
 #   api_version  = 1.x.y.z

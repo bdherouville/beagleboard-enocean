@@ -2,7 +2,7 @@
 
 Wraps pyserial-asyncio in a small, opinionated API:
 
-    link = SerialLink(port="/dev/ttyO4", baudrate=57600)
+    link = SerialLink(port="/dev/ttyS4", baudrate=57600)
     async with link.run():
         await link.write(frame_bytes)
         chunk = await link.read()      # arbitrary chunk; blocks until bytes arrive

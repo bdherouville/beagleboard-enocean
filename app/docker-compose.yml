@@ -9,13 +9,13 @@ services:
     pull_policy: always
     restart: unless-stopped              # supervises the process; replaces the legacy Java Agent
     devices:
-      - "/dev/ttyO4:/dev/ttyO4"
+      - "/dev/ttyS4:/dev/ttyS4"
     group_add:
       # 'dialout' GID on the BBB's Debian image. Verify with
       # `getent group dialout` on the target; some images use 18.
       - "20"
     environment:
-      VDSENSOR_SERIAL_PORT: ${VDSENSOR_SERIAL_PORT:-/dev/ttyO4}
+      VDSENSOR_SERIAL_PORT: ${VDSENSOR_SERIAL_PORT:-/dev/ttyS4}
       VDSENSOR_SERIAL_BAUD: "57600"
       VDSENSOR_DB_PATH: /data/vdsensor.db
       VDSENSOR_HTTP_HOST: "0.0.0.0"

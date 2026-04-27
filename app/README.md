@@ -35,7 +35,7 @@ The script:
    `.env`).
 3. Installs two systemd units:
    - `uart4-pinmux.service` — runs `config-pin P9.11/P9.13 uart` before
-     docker starts, so `/dev/ttyO4` exists by the time the container needs it.
+     docker starts, so `/dev/ttyS4` exists by the time the container needs it.
    - `vdsensor.service` — runs `docker compose pull && up -d` after docker +
      pinmux + network are online; tears the stack down cleanly on `stop`.
 3. Pulls the image and starts the stack.
@@ -80,7 +80,7 @@ and `.env.example`. Highlights:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VDSENSOR_SERIAL_PORT` | `/dev/ttyO4` | UART node attached to the EnOcean module |
+| `VDSENSOR_SERIAL_PORT` | `/dev/ttyS4` | UART node attached to the EnOcean module |
 | `VDSENSOR_DB_PATH` | `/data/vdsensor.db` | SQLite registry path (volume-mounted) |
 | `VDSENSOR_HTTP_PORT` | `8080` | HTTP server port |
 | `VDSENSOR_MQTT_URL` | unset | `mqtt://user:pass@host:1883` — enables the HA bridge |

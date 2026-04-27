@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="VDSENSOR_", env_file=".env", extra="ignore")
 
-    serial_port: str = Field(default="/dev/ttyO4")
+    serial_port: str = Field(default="/dev/ttyS4")
     serial_baud: int = Field(default=57600)
     fake: bool = Field(default=False)
 

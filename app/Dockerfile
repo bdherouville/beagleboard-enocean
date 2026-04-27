@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
 
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
-# Non-root user; supplementary 'dialout' group so /dev/ttyO4 is readable.
+# Non-root user; supplementary 'dialout' group so /dev/ttyS4 is readable.
 # GID 20 matches the default Debian-on-BBB dialout. Verify on the target with
 # `getent group dialout` and adjust via `--group-add` at compose time if needed.
 RUN groupadd --system --gid 20 dialout || true \
@@ -64,5 +64,5 @@ EXPOSE 8080
 
 # Single command: read settings from VDSENSOR_* env, run the FastAPI server.
 # Settings → CLI flag mapping: serial port from $VDSENSOR_SERIAL_PORT (default
-# /dev/ttyO4); MQTT from $VDSENSOR_MQTT_URL (omit to disable).
+# /dev/ttyS4); MQTT from $VDSENSOR_MQTT_URL (omit to disable).
 CMD ["python", "-m", "vdsensor.main"]
