@@ -8,6 +8,12 @@ services:
     image: ghcr.io/${GHCR_USER:-CHANGE-ME}/vdsensor:${TAG:-latest}
     pull_policy: always
     restart: unless-stopped              # supervises the process; replaces the legacy Java Agent
+    # The container needs to write /sys/class/gpio/* to drive the daughter-
+    # board status LEDs. Docker mounts /sys read-only by default;
+    # `privileged: true` makes it writable and grants the kernel
+    # capabilities needed for sysfs GPIO. Single-purpose homelab service
+    # behind a LAN — acceptable trade-off.
+    privileged: true
     devices:
       - "/dev/ttyS4:/dev/ttyS4"
     group_add:

@@ -39,21 +39,23 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
 
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
-# Non-root user; supplementary 'dialout' group so /dev/ttyS4 is readable.
-# GID 20 matches the default Debian-on-BBB dialout. Verify on the target with
-# `getent group dialout` and adjust via `--group-add` at compose time if needed.
-RUN groupadd --system --gid 20 dialout || true \
-    && useradd --system --no-create-home --shell /usr/sbin/nologin \
-       --gid users --groups dialout vdsensor \
-    && install -d -o vdsensor -g users /data
+# We run as root inside the container. Two reasons:
+#   1. /sys/class/gpio/export is owned by root and we need to write it for
+#      the daughter-board status LEDs (and the GPIO identification button).
+#      `privileged: true` in docker-compose makes /sys writable but doesn't
+#      change file ownership, so a non-root container user still couldn't
+#      write the export file.
+#   2. The container is single-purpose, behind a LAN, and the host's docker
+#      daemon already isolates it from the rest of the system.
+# Keep the data dir owned by root.
+RUN install -d /data
 
 COPY --from=builder /wheels /wheels
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     pip install --no-index --find-links=/wheels vdsensor \
     && rm -rf /wheels
 
-USER vdsensor
-WORKDIR /home/vdsensor
+WORKDIR /root
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
