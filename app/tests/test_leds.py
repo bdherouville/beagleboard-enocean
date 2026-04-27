@@ -108,3 +108,22 @@ async def test_build_erp1_rx_path(leds: NullLeds) -> None:
         assert got.sender_id == 0x1234
         await asyncio.sleep(0)
         assert leds.state()[Color.ORANGE] is True
+
+
+async def test_set_learn_mode_returns_false_on_ret_not_supported() -> None:
+    """Older chips (TCM310 firmware, etc.) reply RET_NOT_SUPPORTED to
+    CO_WR_LEARNMODE because the command is part of the Smart-Ack subset.
+    Classic 1BS/4BS/RPS teach-in works regardless, so the controller must
+    not raise — it should signal 'no chip-side learn mode' via False."""
+    link = FakeSerialLink()
+    err_resp = encode_frame(PacketType.RESPONSE, bytes((ReturnCode.RET_NOT_SUPPORTED,)))
+
+    async def write_intercept(_: bytes) -> None:
+        link._out.put_nowait(err_resp)
+
+    link.write = write_intercept                # type: ignore[method-assign]
+
+    controller = Controller(link)
+    async with controller.run():
+        ok = await controller.set_learn_mode(True, 5_000)
+    assert ok is False                          # tolerated, not raised

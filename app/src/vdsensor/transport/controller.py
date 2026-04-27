@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from ..esp3 import common_command as cc
 from ..esp3.events import Event, parse_event
 from ..esp3.framing import Frame, FrameDecoder, encode_frame
-from ..esp3.packets import EventCode, PacketType
+from ..esp3.packets import EventCode, PacketType, ReturnCode
 from ..esp3.radio import Erp1, parse_erp1
 from ..esp3.response import Response, parse_response
 from ..hardware import Leds, NullLeds
@@ -129,11 +129,25 @@ class Controller:
         self._info.idbase = info
         return info
 
-    async def set_learn_mode(self, enable: bool, timeout_ms: int = 60_000) -> None:
+    async def set_learn_mode(self, enable: bool, timeout_ms: int = 60_000) -> bool:
+        """Try to put the chip into Smart-Ack-style learn mode.
+
+        Returns True on RET_OK, False on RET_NOT_SUPPORTED (older firmware /
+        non-Smart-Ack chips). Classic 1BS/4BS/RPS teach-in works regardless —
+        the chip is always listening on RX — so a False return is not fatal.
+        Any other RET_* return code is raised.
+        """
         resp = await self.request(cc.cmd_co_wr_learnmode(enable, timeout_ms))
-        if not resp.ok:
-            raise RuntimeError(f"CO_WR_LEARNMODE({enable}) failed: {resp.return_code:#x}")
-        self._info.learn_mode = enable
+        if resp.ok:
+            self._info.learn_mode = enable
+            return True
+        if resp.return_code == ReturnCode.RET_NOT_SUPPORTED:
+            logger.info(
+                "CO_WR_LEARNMODE(%s) not supported by this chip — "
+                "classic teach-in still works passively", enable,
+            )
+            return False
+        raise RuntimeError(f"CO_WR_LEARNMODE({enable}) failed: {resp.return_code:#x}")
 
     def subscribe(self, *, maxsize: int = 256) -> _Subscription[Erp1]:
         return _Subscription(self._erp1_subs, asyncio.Queue(maxsize=maxsize))
@@ -145,12 +159,20 @@ class Controller:
     async def open_learn_window(
         self, timeout_ms: int = 60_000
     ) -> AsyncIterator[asyncio.Queue[Erp1]]:
-        """Enable learn mode, yield a queue of ERP1 telegrams seen during the window.
+        """Yield a queue of ERP1 telegrams seen during the open window.
 
-        The window closes either when the caller exits the context, when the
-        chip emits CO_LRN_MODE_DISABLED, or when `timeout_ms` elapses.
+        Optionally puts the chip into Smart-Ack-style learn mode if it
+        supports CO_WR_LEARNMODE, but classic 1BS/4BS/RPS teach-in works fine
+        regardless — the radio is always listening on RX. The window closes
+        when the caller exits the context (via assign / cancel / their own
+        timeout) or when the chip fires CO_LRN_MODE_DISABLED.
         """
-        await self.set_learn_mode(True, timeout_ms)
+        chip_learn_mode = False
+        try:
+            chip_learn_mode = await self.set_learn_mode(True, timeout_ms)
+        except Exception as e:
+            logger.warning("CO_WR_LEARNMODE start failed: %s — proceeding passively", e)
+
         sub = self.subscribe()
         evsub = self.subscribe_events()
 
@@ -165,20 +187,23 @@ class Controller:
             except asyncio.CancelledError:
                 return
 
-        watcher = asyncio.create_task(_watch_close(), name="learnmode-watcher")
+        watcher = asyncio.create_task(_watch_close(), name="learnmode-watcher") \
+            if chip_learn_mode else None
         try:
             async with sub as q:
                 yield q
         finally:
-            watcher.cancel()
-            try:
-                await watcher
-            except (asyncio.CancelledError, Exception):
-                pass
-            try:
-                await self.set_learn_mode(False, 0)
-            except Exception as e:
-                logger.warning("failed to stop learn mode cleanly: %s", e)
+            if watcher is not None:
+                watcher.cancel()
+                try:
+                    await watcher
+                except (asyncio.CancelledError, Exception):
+                    pass
+            if chip_learn_mode:
+                try:
+                    await self.set_learn_mode(False, 0)
+                except Exception as e:
+                    logger.warning("failed to stop learn mode cleanly: %s", e)
 
     # ---- internals --------------------------------------------------------
 
