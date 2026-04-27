@@ -14,6 +14,7 @@ from vdsensor.registry.devices import (
     mark_seen,
     remove_device,
     rename_device,
+    upsert_device,
 )
 from vdsensor.registry.pairing import is_teach_in_candidate
 from vdsensor.registry.telegrams import recent, recent_for_device, write_telegram
@@ -53,6 +54,22 @@ async def test_device_lifecycle(db: Database) -> None:
 
     async with db.session() as s:
         assert await get_device(s, 0x01020304) is None
+
+
+async def test_upsert_inserts_then_updates(db: Database) -> None:
+    """Re-pairing should never raise UNIQUE; it should update label + EEP."""
+    async with db.session() as s, s.begin():
+        dev1, created1 = await upsert_device(s, sender_id=0xAA, eep="A5-02-05", label="lab")
+    assert created1 is True
+    assert dev1.label == "lab"
+
+    async with db.session() as s, s.begin():
+        dev2, created2 = await upsert_device(s, sender_id=0xAA, eep="A5-04-01", label="kitchen")
+    assert created2 is False                          # second call updated, didn't insert
+    assert dev2.label == "kitchen"
+    assert dev2.eep == "A5-04-01"
+    # paired_at must NOT have been bumped — original first-pair timestamp wins.
+    assert dev2.paired_at == dev1.paired_at
 
 
 async def test_list_devices_orders_by_label(db: Database) -> None:

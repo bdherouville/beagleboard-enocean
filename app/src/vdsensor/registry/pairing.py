@@ -25,7 +25,7 @@ from enum import StrEnum
 from ..esp3.radio import Erp1, is_1bs_teach_in, is_4bs_teach_in
 from ..transport import Controller
 from .db import Database
-from .devices import add_device
+from .devices import upsert_device
 
 logger = logging.getLogger(__name__)
 
@@ -87,13 +87,15 @@ class PairingService:
                 self._run_window(timeout_ms), name="pairing-window"
             )
 
-    async def assign(self, sender_id: int, eep: str, label: str) -> None:
+    async def assign(self, sender_id: int, eep: str, label: str) -> bool:
+        """Pair / re-pair a device. Returns True if newly inserted, False if updated."""
         async with self._lock:
             if self._state != PairingState.OPEN:
                 raise RuntimeError("no pairing session is active")
             async with self._db.session() as s, s.begin():
-                await add_device(s, sender_id=sender_id, eep=eep, label=label)
+                _, created = await upsert_device(s, sender_id=sender_id, eep=eep, label=label)
             self._stop_event.set()                  # let the window task exit cleanly
+            return created
 
     async def cancel(self) -> None:
         async with self._lock:

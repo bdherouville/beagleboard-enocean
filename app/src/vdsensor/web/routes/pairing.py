@@ -72,18 +72,34 @@ async def pair_assign(
     profile = get_profile(eep)
     if profile is None:
         raise HTTPException(status_code=400, detail=f"unknown EEP profile: {eep}")
+
+    # If the device already exists with a different EEP, snapshot its old
+    # profile so we can clear the stale HA discovery topics afterwards.
+    async with db.session() as s:
+        prev = await get_device(s, sid)
+    prev_profile = get_profile(prev.eep) if prev is not None else None
+    eep_changed = prev is not None and prev.eep != eep
+
     try:
-        await pairing.assign(sid, eep, label.strip())
+        created = await pairing.assign(sid, eep, label.strip())
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
 
     if mqtt is not None:
+        if eep_changed and prev is not None and prev_profile is not None:
+            await mqtt.clear_discovery(prev, list(prev_profile.points))
         async with db.session() as s:
             device = await get_device(s, sid)
         if device is not None:
             await mqtt.publish_discovery(device, list(profile.points))
 
-    return JSONResponse({"ok": True, "sender_id": f"0x{sid:08x}", "eep": eep, "label": label})
+    return JSONResponse({
+        "ok": True,
+        "created": created,
+        "sender_id": f"0x{sid:08x}",
+        "eep": eep,
+        "label": label,
+    })
 
 
 @router.post("/pair/cancel")

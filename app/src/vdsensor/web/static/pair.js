@@ -8,8 +8,9 @@
   if (!status || !tbody || !startForm || !cancelBtn || !tpl) return;
 
   function setStatus(text, isError) {
-    status.innerHTML = "state: <code>" + text + "</code>";
+    status.innerHTML = text;
     status.classList.toggle("warn", !!isError);
+    status.classList.toggle("success", !isError && text.startsWith("✓"));
   }
 
   function appendCandidate(p) {
@@ -24,7 +25,14 @@
       const fd = new FormData(form);
       const resp = await fetch("/pair/assign", { method: "POST", body: fd });
       if (resp.ok) {
-        setStatus("paired " + p.sender, false);
+        let body = {};
+        try { body = await resp.json(); } catch {}
+        const verb = body.created === false ? "updated" : "paired";
+        // p.sender is a server-formatted hex literal; safe to embed in href.
+        setStatus(
+          `✓ ${verb} ${p.sender} — <a href="/devices/${p.sender}">view in devices list</a>`,
+          false,
+        );
         tr.remove();
       } else {
         const text = await resp.text();

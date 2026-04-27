@@ -24,6 +24,30 @@ async def add_device(
     return dev
 
 
+async def upsert_device(
+    session: AsyncSession,
+    sender_id: int,
+    eep: str,
+    label: str,
+    notes: str | None = None,
+) -> tuple[Device, bool]:
+    """Insert if absent, update label/eep/notes if present.
+
+    Returns (device, created) where `created` is True iff a new row was
+    inserted. `paired_at` is left intact on update (the original first-pair
+    timestamp is the more useful datum than "last re-paired").
+    """
+    dev = await get_device(session, sender_id)
+    if dev is None:
+        return await add_device(session, sender_id, eep, label, notes), True
+    dev.eep = eep
+    dev.label = label
+    if notes is not None:
+        dev.notes = notes
+    await session.flush()
+    return dev, False
+
+
 async def get_device(session: AsyncSession, sender_id: int) -> Device | None:
     return await session.get(Device, sender_id)
 
