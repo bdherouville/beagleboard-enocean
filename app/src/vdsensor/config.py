@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,3 +38,13 @@ class Settings(BaseSettings):
         if self.db_path == ":memory:":
             return "sqlite+aiosqlite:///:memory:"
         return f"sqlite+aiosqlite:///{self.db_path}"
+
+    # docker-compose substitutes `${VDSENSOR_MQTT_URL:-}` to an empty string
+    # when the var is not set in .env. Treat empty/whitespace as "MQTT off"
+    # rather than handing it to the URL parser.
+    @field_validator("mqtt_url", mode="before")
+    @classmethod
+    def _empty_mqtt_url_means_disabled(cls, v: object) -> object:
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v

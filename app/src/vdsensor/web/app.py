@@ -58,7 +58,7 @@ def build_app(
     pairing = PairingService(controller, db)
 
     bridge: MqttBridge | None = None
-    if mqtt_url is not None:
+    if mqtt_url and mqtt_url.strip():
         bridge = MqttBridge(parse_mqtt_url(mqtt_url),
                             Topics(prefix=mqtt_prefix, ha_prefix=ha_discovery_prefix))
 
