@@ -7,37 +7,45 @@
 # Native dev build:
 #   docker build -t vdsensor-rs:dev .
 #
-# Image strategy: rust:alpine builder produces a static musl ELF, scratch
-# runtime ships only that single binary. Templates and static assets are
-# baked into the binary at compile-time via include_str! / include_bytes!.
+# Image strategy:
+#   Builder = rust:1.95-slim-bookworm — multi-arch, includes linux/arm/v7
+#            (rust:alpine does NOT publish an armv7 variant).
+#   Runtime = gcr.io/distroless/cc-debian12:nonroot — multi-arch, ~22 MB,
+#            has glibc + libgcc which the dynamically-linked Rust binary
+#            needs.
+#
+# Templates and static assets are baked into the binary at compile-time via
+# include_str! / include_bytes!, so the runtime container ships only the
+# binary itself.
 
 ARG RUST_VERSION=1.95
 
 # --- builder ---------------------------------------------------------------
 
-FROM rust:${RUST_VERSION}-alpine AS builder
+FROM rust:${RUST_VERSION}-slim-bookworm AS builder
 
-# musl-dev gets us a libc + linker for static linking on alpine.
-# build-base has cc/ar/etc. for libsqlite3-sys's bundled C build.
-RUN apk add --no-cache musl-dev build-base
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        pkg-config \
+        build-essential \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
 # Copy Cargo manifests first so dep resolution caches even when src changes.
 COPY Cargo.toml Cargo.lock ./
 
-# Touch a placeholder src so cargo can resolve and pre-build deps.
+# Placeholder src so cargo can resolve + pre-build deps in a cached layer.
 RUN mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
     echo "// placeholder" > src/lib.rs
 
-# Pre-build dependencies in a cached layer. Strip the placeholder afterwards.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \
     cargo build --release && \
     rm -rf src
 
-# Now the real source.
+# Real source.
 COPY src ./src
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -48,7 +56,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 # --- runtime ---------------------------------------------------------------
 
-FROM scratch AS runtime
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 
 COPY --from=builder /vdsensor /vdsensor
 
@@ -58,8 +66,8 @@ ENV VDSENSOR_LOG=info
 
 EXPOSE 8080
 
-# /data is created by the docker-compose volume mount at runtime. The
-# Rust binary creates the SQLite file inside it on first boot.
+# /data is created by the docker-compose volume mount at runtime. The Rust
+# binary creates the SQLite file inside it on first boot.
 VOLUME ["/data"]
 
 ENTRYPOINT ["/vdsensor"]
