@@ -92,3 +92,21 @@ tbody tr:first-child { background: rgba(88, 166, 255, 0.06); }
 
 .decoded dt { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .decoded dd { font-size: 1.15rem; font-family: var(--mono); color: var(--accent); }
+
+details { margin-top: 0.8rem; }
+details summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+details summary:hover { color: var(--accent); }
+
+.leds-test { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0; }
+.led-test-btn {
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.led-test-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.led-test-btn:disabled { opacity: 0.5; cursor: not-allowed; }

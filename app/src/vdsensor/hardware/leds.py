@@ -192,3 +192,33 @@ def build_leds(kind: str, gpios: dict[Color, int] | None = None) -> Leds:
     if kind in ("sysfs", "gpio"):
         return SysfsLeds(g)
     raise ValueError(f"unknown leds backend: {kind!r}")
+
+
+# --- Standalone GPIO drive helpers (for the identification test endpoint) ----
+
+# Restrict the test endpoint to the four GPIOs the legacy Java drove. Anything
+# outside this set could collide with kernel-managed pins (USR LEDs, eMMC, etc.)
+# and would make the failure mode much less obvious.
+ALLOWED_TEST_GPIOS: frozenset[int] = frozenset({66, 67, 68, 69})
+
+
+async def drive_test_gpio(gpio: int, *, duration_ms: int = 5000) -> None:
+    """Drive `gpio` high for `duration_ms`, then low. Best-effort — failures
+    are logged at INFO and swallowed (the test endpoint reports success
+    optimistically; the user diagnoses by watching the actual LED).
+    """
+    if gpio not in ALLOWED_TEST_GPIOS:
+        raise ValueError(f"gpio {gpio} not in test-allowed set {sorted(ALLOWED_TEST_GPIOS)}")
+
+    sysfs = SysfsLeds.SYSFS / f"gpio{gpio}"
+    try:
+        if not sysfs.is_dir():
+            await asyncio.to_thread((SysfsLeds.SYSFS / "export").write_text, str(gpio))
+        await asyncio.to_thread((sysfs / "direction").write_text, "out")
+        await asyncio.to_thread((sysfs / "value").write_text, "1")
+        try:
+            await asyncio.sleep(duration_ms / 1000)
+        finally:
+            await asyncio.to_thread((sysfs / "value").write_text, "0")
+    except OSError as e:
+        logger.info("drive_test_gpio(%d) failed: %s", gpio, e)
